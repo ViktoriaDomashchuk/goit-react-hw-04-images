@@ -1,4 +1,5 @@
-import { Component } from 'react';
+import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
 import { Container } from './App.styled';
 import { SearchBar } from './Searchbar/Searchbar';
 import { fetchImages } from 'Service/fetchApi';
@@ -6,57 +7,67 @@ import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 
-export class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    isLoading: false,
-    totalImage: 0,
-    limit: 500,
-    hasError: false,
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [totalImage, setTotalImage] = useState(0);
+  const limit = 500;
+
+  useEffect(() => {
+    const handleFetchImages = async (query, page) => {
+      try {
+        setIsLoading(true);
+        const data = await fetchImages(query, page);
+        const resultImages = data.hits;
+       
+        if (!resultImages.length) {
+          alert('According to the result of the request, there are no photos!');
+          return;
+        }
+        setImages(prevImages =>
+          page === 1 ? [...resultImages] : [...prevImages, ...resultImages]
+        );
+        setTotalImage(data.totalHits);
+      } catch (error) {
+        alert('Something went wrong! Please, try later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (!query) {
+      return;
+    }
+    handleFetchImages(query, page);
+  }, [query, page]);
+
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    
-    if (prevState.query !== query || prevState.page !== page) {
-      fetchImages(query, page).then(respons => {
-        this.setState(({ images }) => ({
-          images: page === 1 ? [...respons.hits] : [...images, ...respons.hits],
-          totalImage: respons.totalHits,
-        }));
-      }).finally(() => {
-          this.setState({ isLoading: false });
-        });
-    }
-  }
+  const handleSubmit = query => {
+    setQuery(query);
+    setPage(1);
+    setImages([]);
+  };
 
-  
-  handleSubmit = query => {
-    this.setState({ query, isLoading: true })
-  }
+  return (
+    <Container>
+      <SearchBar onSubmit={handleSubmit} />
+      <ImageGallery images={images} />
+      {isLoading ? (
+        <Loader />
+      ) : (
+        images.length !== 0 &&
+        images !== limit &&
+        images.length < totalImage && <Button onClick={handleLoadMore} />
+      )}
+    </Container>
+  );
+};
 
-  handleLoadMore = () => {
-    this.setState((prevState) => ({page: prevState.page + 1, isLoading: true, error:null}))
-  }
-
-  renderButtonOrLoader = () => {
-    return this.state.isLoading ? (<Loader />) :
-      (this.state.images.length !== 0 && this.state.images !== this.limit && this.state.images.length < this.state.totalImage
-        && (<Button onClick={this.handleLoadMore} />))         
-  }
-  
-  render() {
-    const { images } = this.state;
-    
-    return (
-      <Container>
-        <SearchBar onSubmit={this.handleSubmit} />
-        <ImageGallery images={images} />
-        {this.renderButtonOrLoader()}
-        
-      </Container>
-    );
-  }
-}
+App.protoType = {
+  query: PropTypes.string.isRequired,
+  page: PropTypes.number.isRequired,
+}.isRequired;
