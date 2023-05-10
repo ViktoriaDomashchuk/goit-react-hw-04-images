@@ -8,7 +8,7 @@ import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 
 export const App = () => {
-  const [query, setQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [images, setImages] = useState([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,10 +16,10 @@ export const App = () => {
   const limit = 500;
 
   useEffect(() => {
-    const handleFetchImages = async (query, page) => {
+    const handleFetchImages = async (searchQuery, page) => {
       try {
         setIsLoading(true);
-        const data = await fetchImages(query, page);
+        const data = await fetchImages(searchQuery, page);
         const resultImages = data.hits;
        
         if (!resultImages.length) {
@@ -31,25 +31,30 @@ export const App = () => {
         );
         setTotalImage(data.totalHits);
       } catch (error) {
+        setImages([]);
         alert('Something went wrong! Please, try later.');
       } finally {
         setIsLoading(false);
       }
     };
-    if (!query) {
+    if (!searchQuery) {
       return;
     }
-    handleFetchImages(query, page);
-  }, [query, page]);
+    handleFetchImages(searchQuery, page);
+  }, [page, searchQuery]);
 
   const handleLoadMore = () => {
     setPage(prevPage => prevPage + 1);
   };
 
-  const handleSubmit = query => {
-    setQuery(query);
-    setPage(1);
+  const handleSubmit = newSearchQuery => {
+    if (newSearchQuery === '' || newSearchQuery === searchQuery) {
+      return;
+    }
     setImages([]);
+    setSearchQuery(newSearchQuery);
+    setPage(1);
+    setTotalImage(0);
   };
 
   return (
